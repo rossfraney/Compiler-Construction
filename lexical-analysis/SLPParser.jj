@@ -1,0 +1,316 @@
+options {
+    IGNORE_CASE = true;
+    DEBUG_TOKEN_MANAGER = false;
+    }
+PARSER_BEGIN(SLPParser)
+
+  public class SLPParser {
+    //Parser execution
+    public static void main ( String args [ ] ) {
+
+      //Parser initialization
+      SLPParser parser;
+
+      // Use console input rather than a file stream
+      if(args.length == 0){
+        System.out.println ("SLPParser: Reading input ...");
+        parser = new SLPParser(System.in);
+      }
+      //File Stream input
+      else if(args.length == 1){
+        System.out.println ("" );
+        System.out.println ("SLPParser: Reading the file " + args[0] + " ..." );
+        System.out.println ("" );
+        try {
+          parser = new SLPParser(new java.io.FileInputStream(args[0]));
+        }
+        catch(java.io.FileNotFoundException e) {
+          System.out.println ("SLPParser: The file " + args[0] + " was not found.");
+          return;
+        }
+      }
+      else {
+        System.out.println ("SLPParser:  You must use one of the following:");
+        System.out.println ("         java SLPParser < file");
+        System.out.println ("Or");
+        System.out.println ("         java SLPParser file");
+        return ;
+      }
+      try {
+
+      /* Used for testing the Lexemes:
+         for (Token t = getNextToken(); t.kind!=EOF; t = getNextToken()) {
+            if(t.kind == NUM){
+                System.out.print("NUM");
+                System.out.print("("+t.image+") ");
+            }
+            else if (t.kind==ID){
+                System.out.print("ID " + "(" + t.image + ")");
+            }
+            else
+                System.out.print(t.image+" ");
+       */
+      parser.start();
+        System.out.println ("" );
+        System.out.println ("SLPParser: The input was read sucessfully.");
+        System.out.println ("" );
+      }
+      catch(ParseException e){
+        System.out.println ("SLPParser: There was an error during the parse.");
+        System.out.println (e.getMessage());
+      }
+      catch(TokenMgrError e){
+        System.out.println ("SLPParser: There was an error.");
+        System.out.println (e.getMessage());
+      }
+    }
+  }
+PARSER_END(SLPParser)
+
+
+TOKEN_MGR_DECLS : {
+    static int commentNesting = 0;
+}
+
+//STRUCTURES AND CHARACTERS TO SKIP
+SKIP : {
+    " "
+|   "\t"
+|   "\n"
+|   "\r"
+|   <"//" (~["\n","\r"])* ("\n" | "\r" | "\r\n")>
+}
+
+SKIP : {
+    "/*" { commentNesting++; } : IN_COMMENT
+}
+
+<IN_COMMENT> SKIP : {
+    "/*" { commentNesting++; }
+    | "*/" { commentNesting--;
+        if (commentNesting == 0)
+            SwitchTo(DEFAULT);
+    }
+    | <~[]>
+}
+
+//Punctuation tokens
+TOKEN: {
+    <COMMA : "," >
+|   <SEMIC : ";" >
+|   <COLON : ":" >
+|   <ASSIGN : "=" >
+|   <LBR : "(" >
+|   <RBR : ")" >
+|   <PLUS_SIGN : "+" >
+|   <MINUS_SIGN : "-" >
+|   <NOT : "~" >
+|   <OR_OP : "||" >
+|   <AND_OP : "&&" >
+|   <BOOL_EQ : "==" >
+|   <NOT_EQ : "!=" >
+|   <LT : "<" >
+|   <LT_EQ : "<=" >
+|   <GT : ">" >
+|   <GT_EQ : ">=" >
+}
+
+//RESERVED WORDS
+TOKEN : {
+    <IF: "if">
+|   <VAR: "var">
+|   <CONST: "const">
+|   <RETURN: "return">
+|   <WHILE: "while">
+|   <ELSE: "else">
+|   <TRUE: "true">
+|   <FALSE: "false">
+|   <IS: "is">
+|   <BOOLEAN: "boolean">
+|   <INTEGER: "integer">
+|   <VOID: "void">
+|   <MAIN: "main">
+|   <BEGIN: "begin">
+|   <END: "end">
+|   <SKIP_TOKEN: "skip">
+}
+
+
+TOKEN : {
+    <NUM: <SIGNED>>
+|   <#DIGIT: ["0" - "9"]>
+|   <SIGNED: (["0"]) | ("-")? ["1" - "9"] (<DIGIT>)*>
+|   <ID: <LETTER>(<LETTER>|<DIGIT>|"_")*>
+|   <#LETTER: (["a"-"z","A"-"Z"])>
+}
+
+//MAIN UNIT
+
+void start(): {}
+{
+    prog() <EOF>
+}
+
+void prog() : {}
+{
+    dec_list() function_list() main()
+}
+
+void dec_list () : {}
+{
+    (decl() <SEMIC> dec_list())?
+}
+
+void decl () : {}
+{
+    var_decl() | const_decl()
+}
+
+void var_decl() : {}
+{
+    <VAR> <ID> <COLON> type()
+}
+
+void const_decl() : {}
+{
+    <CONST> <ID> <COLON> type() <ASSIGN> expression()
+}
+
+void function_list() : {}
+{
+    (function() function_list())?
+}
+
+void function() : {}
+{
+    type() <ID> <LBR>parameter_list()<RBR> <IS>
+    dec_list()
+    <BEGIN>
+    statement_block()
+    <RETURN> <LBR> (expression())? <RBR> <SEMIC>
+    <END>
+}
+
+void type() : {}
+{
+    <INTEGER> | <BOOLEAN> | <VOID> //changed number here from int
+}
+
+void parameter_list() : {}
+{
+    (nemp_parameter_list())?
+}
+
+void nemp_parameter_list() : {}
+{
+    <ID><COLON> type() nemp_parameter_list_prime()
+}
+
+void nemp_parameter_list_prime() : {}
+{
+    (<COMMA> nemp_parameter_list())?
+}
+
+void main() : {}
+{
+    <MAIN>
+    <BEGIN>
+    dec_list()
+    statement_block()
+    <END>
+}
+
+void statement_block() : {}
+{
+    (statement() statement_block())?
+}
+
+void statement() : {}
+{
+    <ID> statement_prime() |
+    <BEGIN> statement_block() <END> |
+    <IF> condition() <BEGIN> statement_block() <END>
+    <ELSE> <BEGIN> statement_block() <END> |
+    <WHILE> condition() <BEGIN> statement_block() <END> | <SKIP_TOKEN> <SEMIC>
+}
+
+void statement_prime() : {}
+{
+    <ASSIGN> expression() <SEMIC> | <LBR> arg_list() <RBR> <SEMIC>
+}
+
+void expression() : {}
+{
+     fragment() expr_bin_op()
+     | <LBR> expression() <RBR> expr_bin_op()
+}
+
+void expr_bin_op() : {}
+{
+    (binary_arith_op() expression())?
+}
+
+void binary_arith_op() : {}
+{
+    <PLUS_SIGN> | <MINUS_SIGN>
+}
+
+void fragment() : {}
+{
+    (<MINUS_SIGN>)? <ID> (arg_list())?
+    | <NUM>
+    | bool_tf()
+}
+
+void bool_tf() : {}
+{
+    <TRUE> | <FALSE>
+}
+
+void condition() : {}
+{
+    <NOT> condition()
+    | condition_prime() bool_cond()
+    | <LBR> condition() <RBR> bool_cond()
+}
+
+void condition_prime() : {}
+{
+    fragment() (comp_op() condition_prime())?
+}
+
+void bool_cond() : {}
+{
+    ((<AND_OP> | bool_cond_prime()) condition())?
+}
+
+void bool_cond_prime() : {}
+{
+    <OR_OP>
+}
+
+void comp_op() : {}
+{
+   <LT> | <LT_EQ> | <GT> | <GT_EQ> | comp_op_prime()
+}
+
+void comp_op_prime() : {}
+{
+    <BOOL_EQ> | <NOT_EQ>
+}
+
+void arg_list() :{}
+{
+    (<LBR>nemp_arg_list()<RBR>) | (nemp_arg_list())
+}
+
+void nemp_arg_list() : {}
+{
+    (<ID> ( <COMMA> nemp_arg_list())?)
+}
+
+
+
+
+
+

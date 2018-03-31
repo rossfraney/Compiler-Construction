@@ -1,0 +1,32 @@
+multiply:
+        result = Integer
+        minus_sign = boolean
+L2:
+        t1 = x < 0
+        t2 = y >= 0
+        t3 = t1 && t2
+        IfFalse t3 GOTO L2:
+        minus_sign = 1
+L3:
+        result = 0
+L4:
+        t4 = y > 0
+        IfFalse t4 GOTO L5:
+        t5 = result + x
+        result = t5
+        t5 = y - 1
+        y = t5
+L5:
+        t5 = minus_sign == true
+        IfFalse t5 GOTO L5:
+        result = -result
+L6:
+        return
+main:
+        arg_1 = integer
+        arg_2 = integer
+        result = integer
+        five = 5
+        arg_1 = -6
+        arg_2 = five
+        result = multiply
